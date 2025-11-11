@@ -1,0 +1,20 @@
+# Compiled class files
+bin/
+*.class
+
+# Data files
+*.dat
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Maven
+target/
+pom.xml.tag
+pom.xml.asc
