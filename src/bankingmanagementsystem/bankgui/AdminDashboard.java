@@ -139,9 +139,17 @@ public class AdminDashboard extends JPanel {
             sb.append("Min Balance: ").append(String.format("%.2f", customer.getAccount().getMinBalance())).append("\n"); 
             sb.append("Current Balance: ").append(String.format("%.2f", customer.getAccount().getBalance())).append("\n\n");
 
+                        // Show security question and answer for admin review
+                        sb.append("Security Question: ")
+                            .append(customer.getSecurityQuestion() == null ? "Not set" : customer.getSecurityQuestion())
+                            .append("\n");
+                        sb.append("Security Answer: ")
+                            .append(customer.getSecurityAnswer() == null ? "Not set" : customer.getSecurityAnswer())
+                            .append("\n\n");
+
             // Investments
             sb.append("Investments:\n");
-            if (customer.getInvestments() == null || customer.getInvestments().isEmpty()) {
+            if (customer.getInvestments() == null || customer.getInvestments().isEmpty()) { // CHECK FOR NULL
                 sb.append("  None\n");
             } else {
                 for (Investment inv : customer.getInvestments()) {
@@ -153,7 +161,7 @@ public class AdminDashboard extends JPanel {
 
             // Loans
             sb.append("Loans:\n");
-            if (customer.getLoans() == null || customer.getLoans().isEmpty()) {
+            if (customer.getLoans() == null || customer.getLoans().isEmpty()) { // CHECK FOR NULL
                 sb.append("  None\n");
             } else {
                 for (Loan loan : customer.getLoans()) {

@@ -1,6 +1,9 @@
 package bankingmanagementsystem.bankgui;
 
 import bankingmanagementsystem.Customer;
+import bankingmanagementsystem.Admin;
+import bankingmanagementsystem.DataManager;
+import bankingmanagementsystem.PasswordResetManager;
 import bankingmanagementsystem.exceptions.AccountNotFoundException;
 
 import javax.swing.*;
@@ -66,12 +69,7 @@ public class LoginPanel extends JPanel {
         adminLoginButton.addActionListener(e -> innerCardLayout.show(centerPanel, ADMIN_LOGIN_PANEL));
         gbc.gridy = 1;
         buttonPanel.add(adminLoginButton, gbc);
-
-        JButton forgotPasswordButton = new JButton("Forgot Password?");
-        forgotPasswordButton.setFont(new Font("SansSerif", Font.BOLD, 16));
-        forgotPasswordButton.addActionListener(e -> mainApp.showForgotPasswordPanel());
-        gbc.gridy = 2;
-        buttonPanel.add(forgotPasswordButton, gbc);
+        
 
         return buttonPanel;
     }
@@ -100,10 +98,14 @@ public class LoginPanel extends JPanel {
         loginButton.addActionListener(e -> handleCustomerLogin());
         buttonRow.add(loginButton);
 
+        JButton forgotButton = new JButton("Forgot Password?");
+        forgotButton.addActionListener(e -> showCustomerForgotDialog());
+        buttonRow.add(forgotButton);
+
         JButton backButton = new JButton("Back");
         backButton.addActionListener(e -> innerCardLayout.show(centerPanel, BUTTON_PANEL));
         buttonRow.add(backButton);
-        
+
         gbc.gridx = 0; gbc.gridy = 2; gbc.gridwidth = 2;
         panel.add(buttonRow, gbc);
 
@@ -134,6 +136,10 @@ public class LoginPanel extends JPanel {
         loginButton.addActionListener(e -> handleAdminLogin());
         buttonRow.add(loginButton);
 
+        JButton forgotButton = new JButton("Forgot Password?");
+        forgotButton.addActionListener(e -> showAdminForgotDialog());
+        buttonRow.add(forgotButton);
+
         JButton backButton = new JButton("Back");
         backButton.addActionListener(e -> innerCardLayout.show(centerPanel, BUTTON_PANEL));
         buttonRow.add(backButton);
@@ -163,6 +169,195 @@ public class LoginPanel extends JPanel {
         } catch (AccountNotFoundException e) {
             JOptionPane.showMessageDialog(this, e.getMessage(), "Login Failed", JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    private void showCustomerForgotDialog() {
+        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this), "Customer Password Reset", Dialog.ModalityType.APPLICATION_MODAL);
+        JPanel panel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5,5,5,5);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        gbc.gridx = 0; gbc.gridy = 0;
+        panel.add(new JLabel("Account Number:"), gbc);
+        gbc.gridx = 1; gbc.gridy = 0;
+        JTextField accField = new JTextField(15);
+        panel.add(accField, gbc);
+
+    gbc.gridx = 0; gbc.gridy = 1;
+    panel.add(new JLabel("Security Question:"), gbc);
+    gbc.gridx = 1; gbc.gridy = 1;
+    JComboBox<String> questionBox = new JComboBox<>(PasswordResetManager.SECURITY_QUESTIONS);
+    questionBox.setPrototypeDisplayValue("What is the name of your best friend from childhood?");
+    panel.add(questionBox, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 2;
+        panel.add(new JLabel("Your Answer:"), gbc);
+        gbc.gridx = 1; gbc.gridy = 2;
+        JTextField answerField = new JTextField(15);
+        panel.add(answerField, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 3;
+        panel.add(new JLabel("New Password:"), gbc);
+        gbc.gridx = 1; gbc.gridy = 3;
+        JPasswordField newPass = new JPasswordField(15);
+        panel.add(newPass, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 4; gbc.gridwidth = 2;
+        JButton resetButton = new JButton("Reset Password");
+        panel.add(resetButton, gbc);
+
+        accField.addActionListener(e -> {
+            String acc = accField.getText().trim();
+            if (acc.isEmpty()) return;
+            Customer found = mainApp.getCustomers().stream().filter(c -> c.getAccount().getAccountId().equals(acc)).findFirst().orElse(null);
+            if (found == null) {
+                questionBox.setEnabled(false);
+                JOptionPane.showMessageDialog(dialog, "Account not found.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            if (found.getSecurityQuestion() == null) {
+                questionBox.setSelectedIndex(0);
+                questionBox.setEnabled(true);
+            } else {
+                questionBox.setSelectedItem(found.getSecurityQuestion());
+                questionBox.setEnabled(false);
+            }
+        });
+
+        resetButton.addActionListener(e -> {
+            String acc = accField.getText().trim();
+            if (acc.isEmpty()) {
+                JOptionPane.showMessageDialog(dialog, "Please enter account number.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            Customer found = mainApp.getCustomers().stream().filter(c -> c.getAccount().getAccountId().equals(acc)).findFirst().orElse(null);
+            if (found == null) {
+                JOptionPane.showMessageDialog(dialog, "Account not found.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            String selectedQuestion = (String) questionBox.getSelectedItem();
+            String answer = answerField.getText().trim();
+            if (answer.isEmpty()) { JOptionPane.showMessageDialog(dialog, "Please enter answer.", "Error", JOptionPane.ERROR_MESSAGE); return; }
+
+            // If no question set, allow setting new question+answer then reset password
+            if (found.getSecurityQuestion() == null) {
+                found.setSecurityQuestion(selectedQuestion);
+                found.setSecurityAnswer(answer);
+                String np = new String(newPass.getPassword()).trim();
+                if (np.isEmpty()) { JOptionPane.showMessageDialog(dialog, "Please enter new password.", "Error", JOptionPane.ERROR_MESSAGE); return; }
+                PasswordResetManager.resetCustomerPassword(found, np);
+                DataManager.saveCustomers(mainApp.getCustomers());
+                JOptionPane.showMessageDialog(dialog, "Security question set and password reset successful.", "Success", JOptionPane.INFORMATION_MESSAGE);
+                dialog.dispose();
+                return;
+            }
+
+            // Verify existing answer
+            if (!PasswordResetManager.verifyCustomerSecurityAnswer(found, answer)) {
+                JOptionPane.showMessageDialog(dialog, "Incorrect answer.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            String np = new String(newPass.getPassword()).trim();
+            if (np.isEmpty()) { JOptionPane.showMessageDialog(dialog, "Please enter new password.", "Error", JOptionPane.ERROR_MESSAGE); return; }
+            PasswordResetManager.resetCustomerPassword(found, np);
+            DataManager.saveCustomers(mainApp.getCustomers());
+            JOptionPane.showMessageDialog(dialog, "Password reset successful.", "Success", JOptionPane.INFORMATION_MESSAGE);
+            dialog.dispose();
+        });
+
+        dialog.add(panel);
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private void showAdminForgotDialog() {
+        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this), "Admin Password Reset", Dialog.ModalityType.APPLICATION_MODAL);
+        JPanel panel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5,5,5,5);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        gbc.gridx = 0; gbc.gridy = 0;
+        panel.add(new JLabel("Admin ID:"), gbc);
+        gbc.gridx = 1; gbc.gridy = 0;
+        JTextField idField = new JTextField(15);
+        panel.add(idField, gbc);
+
+    gbc.gridx = 0; gbc.gridy = 1;
+    panel.add(new JLabel("Security Question:"), gbc);
+    gbc.gridx = 1; gbc.gridy = 1;
+    JComboBox<String> questionBox = new JComboBox<>(PasswordResetManager.SECURITY_QUESTIONS);
+    questionBox.setPrototypeDisplayValue("What is the name of your best friend from childhood?");
+    panel.add(questionBox, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 2;
+        panel.add(new JLabel("Your Answer:"), gbc);
+        gbc.gridx = 1; gbc.gridy = 2;
+        JTextField answerField = new JTextField(15);
+        panel.add(answerField, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 3;
+        panel.add(new JLabel("New Password:"), gbc);
+        gbc.gridx = 1; gbc.gridy = 3;
+        JPasswordField newPass = new JPasswordField(15);
+        panel.add(newPass, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 4; gbc.gridwidth = 2;
+        JButton resetButton = new JButton("Reset Password");
+        panel.add(resetButton, gbc);
+
+        idField.addActionListener(e -> {
+            String id = idField.getText().trim();
+            if (id.isEmpty()) return;
+            Admin admin = mainApp.getAdmin();
+            if (!admin.getAdminId().equals(id)) { questionBox.setEnabled(false); JOptionPane.showMessageDialog(dialog, "Admin ID not found.", "Error", JOptionPane.ERROR_MESSAGE); return; }
+            if (admin.getSecurityQuestion() == null) {
+                questionBox.setSelectedIndex(0);
+                questionBox.setEnabled(true);
+            } else {
+                questionBox.setSelectedItem(admin.getSecurityQuestion());
+                questionBox.setEnabled(false);
+            }
+        });
+
+        resetButton.addActionListener(e -> {
+            String id = idField.getText().trim();
+            if (id.isEmpty()) { JOptionPane.showMessageDialog(dialog, "Please enter Admin ID.", "Error", JOptionPane.ERROR_MESSAGE); return; }
+
+            Admin admin = mainApp.getAdmin();
+            if (!admin.getAdminId().equals(id)) { JOptionPane.showMessageDialog(dialog, "Admin ID not found.", "Error", JOptionPane.ERROR_MESSAGE); return; }
+
+            String selectedQuestion = (String) questionBox.getSelectedItem();
+            String answer = answerField.getText().trim();
+            String np = new String(newPass.getPassword()).trim();
+
+            if (admin.getSecurityQuestion() == null) {
+                if (answer.isEmpty()) { JOptionPane.showMessageDialog(dialog, "Please enter an answer for the security question.", "Error", JOptionPane.ERROR_MESSAGE); return; }
+                if (np.isEmpty()) { JOptionPane.showMessageDialog(dialog, "New password cannot be empty.", "Error", JOptionPane.ERROR_MESSAGE); return; }
+                admin.setSecurityQuestion(selectedQuestion);
+                admin.setSecurityAnswer(answer);
+                PasswordResetManager.resetAdminPassword(admin, np);
+                DataManager.saveAdmin(admin);
+                JOptionPane.showMessageDialog(dialog, "Security question set and password reset successful.", "Success", JOptionPane.INFORMATION_MESSAGE);
+                dialog.dispose();
+                return;
+            }
+
+            if (!PasswordResetManager.verifyAdminSecurityAnswer(admin, answer)) { JOptionPane.showMessageDialog(dialog, "Security answer incorrect.", "Error", JOptionPane.ERROR_MESSAGE); return; }
+            if (np.isEmpty()) { JOptionPane.showMessageDialog(dialog, "New password cannot be empty.", "Error", JOptionPane.ERROR_MESSAGE); return; }
+            PasswordResetManager.resetAdminPassword(admin, np);
+            DataManager.saveAdmin(admin);
+            JOptionPane.showMessageDialog(dialog, "Password reset successful.", "Success", JOptionPane.INFORMATION_MESSAGE);
+            dialog.dispose();
+        });
+
+        dialog.add(panel);
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
     }
 
     private void handleAdminLogin() {

@@ -22,8 +22,6 @@ public class BankingSystemGUI {
     public static final String REGISTRATION_PANEL = "RegistrationPanel";
     public static final String CUSTOMER_DASHBOARD = "CustomerDashboard";
     public static final String ADMIN_DASHBOARD = "AdminDashboard";
-    public static final String FORGOT_PASSWORD_PANEL = "ForgotPasswordPanel";
-    // --- Removed SPECIFIC_CUSTOMER_PANEL constant ---
 
     public BankingSystemGUI() {
         loadData();
@@ -41,17 +39,12 @@ public class BankingSystemGUI {
         RegistrationPanel registrationPanel = new RegistrationPanel(this);
         CustomerDashboard customerDashboard = new CustomerDashboard(this);
         AdminDashboard adminDashboard = new AdminDashboard(this);
-        ForgotPasswordPanel forgotPasswordPanel = new ForgotPasswordPanel(this);
-
-        // --- Removed SpecificCustomerPanel instantiation ---
 
         // Add panels to main container
         mainPanel.add(loginPanel, LOGIN_PANEL);
         mainPanel.add(registrationPanel, REGISTRATION_PANEL);
         mainPanel.add(customerDashboard, CUSTOMER_DASHBOARD);
         mainPanel.add(adminDashboard, ADMIN_DASHBOARD);
-        mainPanel.add(forgotPasswordPanel, FORGOT_PASSWORD_PANEL);
-        // --- Removed adding specificCustomerPanel to mainPanel ---
 
         mainFrame.add(mainPanel);
         mainFrame.setVisible(true);
@@ -90,12 +83,6 @@ public class BankingSystemGUI {
         cardLayout.show(mainPanel, ADMIN_DASHBOARD);
     }
 
-    public void showForgotPasswordPanel() {
-        cardLayout.show(mainPanel, FORGOT_PASSWORD_PANEL);
-    }
-
-    // --- Removed showSpecificCustomerPanel method ---
-
     private Component getPanel(String panelName) {
         for (Component comp : mainPanel.getComponents()) {
             // A safer way to get the panel without relying on class name matching
@@ -103,7 +90,6 @@ public class BankingSystemGUI {
             if (comp instanceof RegistrationPanel && panelName.equals(REGISTRATION_PANEL)) return comp;
             if (comp instanceof CustomerDashboard && panelName.equals(CUSTOMER_DASHBOARD)) return comp;
             if (comp instanceof AdminDashboard && panelName.equals(ADMIN_DASHBOARD)) return comp;
-            if (comp instanceof ForgotPasswordPanel && panelName.equals(FORGOT_PASSWORD_PANEL)) return comp;
         }
         
         // Fallback for safety, though the above is preferred
